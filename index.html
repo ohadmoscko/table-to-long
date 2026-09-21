@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>טבלה רחבה לפורמט ארוך</title>
+<meta name="description" content="המרת גיליון רחב עם עשרות או מאות עמודות לפורמט ארוך — שורה לכל ערך. הכל רץ בדפדפן, הקובץ לא נשלח לשום מקום.">
+<style>
+  :root{
+    --bg:#fbfbfa; --fg:#1a1a1a; --muted:#6b6b6b; --line:#d8d6d2;
+    --card:#fff; --accent:#1a1a1a; --ok:#16702f; --warn:#8a5a00; --hl:#fff3c4; --zebra:#f5f4f2;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#16161a; --fg:#ececec; --muted:#9a9a9a; --line:#33333a;
+           --card:#1e1e24; --accent:#ececec; --ok:#63c98a; --warn:#d6a441; --hl:#4a4320; --zebra:#232329; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:24px 16px 64px; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    font-size:16px; line-height:1.55;
+  }
+  .wrap{max-width:900px; margin:0 auto}
+  h1{font-size:24px; margin:0 0 4px}
+  h2{font-size:17px; margin:0 0 10px}
+  .sub{color:var(--muted); font-size:14px; margin:0 0 24px}
+  #drop{
+    border:2px dashed var(--line); border-radius:10px; padding:34px 16px; text-align:center;
+    background:var(--card); cursor:pointer; transition:.15s;
+  }
+  #drop.over{border-color:var(--accent); background:var(--hl)}
+  #drop p{margin:0; color:var(--muted); font-size:15px}
+  #drop strong{color:var(--fg)}
+  fieldset{border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin:20px 0; background:var(--card)}
+  legend{font-size:13px; color:var(--muted); padding:0 6px}
+  .cols{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:4px 16px; max-height:260px; overflow:auto}
+  .opt{display:flex; align-items:center; gap:8px; font-size:14px; cursor:pointer; padding:3px 0}
+  .opt input{margin:0; flex:none; width:16px; height:16px; cursor:pointer}
+  .opt span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:14px 0}
+  button{font:inherit; font-size:15px; padding:9px 18px; border-radius:8px;
+         border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer}
+  button.primary{background:var(--accent); color:var(--bg); border-color:var(--accent)}
+  button:disabled{opacity:.4; cursor:not-allowed}
+  button:not(:disabled):hover{opacity:.85}
+  .stats{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .note{font-size:13px; color:var(--warn); margin:8px 0 0}
+  table{border-collapse:collapse; width:100%; font-size:13px; font-variant-numeric:tabular-nums}
+  th,td{border:1px solid var(--line); padding:5px 8px; text-align:start; max-width:240px;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  th{background:var(--zebra); font-weight:600}
+  .scroll{overflow:auto; max-height:320px; border-radius:8px}
+  .hide{display:none}
+  .foot{margin-top:40px; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted)}
+  .foot code{background:var(--hl); padding:1px 5px; border-radius:3px; color:var(--fg)}
+  select,input[type=text]{font:inherit; font-size:14px; padding:5px 8px; border:1px solid var(--line);
+         border-radius:6px; background:var(--bg); color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>טבלה רחבה לפורמט ארוך</h1>
+  <p class="sub">גיליון עם עשרות או מאות עמודות הופך לשורה אחת לכל ערך. הכל רץ בדפדפן שלך — הקובץ לא נשלח לשום מקום.</p>
+
+  <div id="drop">
+    <p><strong>גרור לכאן קובץ CSV</strong><br>או לחץ לבחירה</p>
+    <input type="file" id="file" accept=".csv,.tsv,.txt,text/csv" class="hide">
+  </div>
+  <p class="stats" id="fileInfo"></p>
+  <p class="note hide" id="encNote"></p>
+
+  <fieldset id="setup" class="hide">
+    <legend>הגדרות המרה</legend>
+
+    <h2>עמודות מזהה</h2>
+    <p class="sub" style="margin:-4px 0 10px">אלה נשארות כמו שהן ומשוכפלות לכל שורה בפלט. כל השאר הופכות לזוגות שם־ערך.</p>
+    <div class="cols" id="idCols"></div>
+
+    <div class="row">
+      <label class="opt"><input type="checkbox" id="skipEmpty" checked><span>לדלג על תאים ריקים</span></label>
+      <label class="opt"><input type="checkbox" id="trimVals" checked><span>לקצץ רווחים מיותרים</span></label>
+    </div>
+
+    <div class="row">
+      <label class="opt" style="gap:6px"><span>שם עמודת השם:</span>
+        <input type="text" id="nameCol" value="שם_עמודה" size="12"></label>
+      <label class="opt" style="gap:6px"><span>שם עמודת הערך:</span>
+        <input type="text" id="valCol" value="ערך" size="12"></label>
+    </div>
+
+    <div class="row">
+      <button class="primary" id="convert">המר</button>
+      <button id="download" disabled>הורד CSV</button>
+      <span class="stats" id="outStats"></span>
+    </div>
+  </fieldset>
+
+  <fieldset id="previewBox" class="hide">
+    <legend>תצוגה מקדימה — 20 שורות ראשונות</legend>
+    <div class="scroll"><table id="preview"></table></div>
+  </fieldset>
+
+  <div class="foot">
+    <p><strong>מפריד וקידוד מזוהים אוטומטית.</strong> נתמכים פסיק, נקודה־פסיק, טאב וקו אנכי. קובץ שנשמר מאקסל בעברית הוא לעיתים <code>Windows-1255</code> ולא UTF-8; אם הפענוח כ-UTF-8 מחזיר ג'יבריש, הקובץ נקרא שוב כ-1255 ותופיע הודעה.</p>
+    <p><strong>הפלט נשמר עם BOM</strong> כדי שאקסל יפתח את העברית נכון ולא כסימני שאלה.</p>
+    <p><strong>המרה לא משנה ערכים</strong> — רק מבנה. מספרים, תאריכים וטקסט נשארים בדיוק כפי שהופיעו בקובץ המקור, כמחרוזות.</p>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var DELIMS = [",", ";", "\t", "|"];
+  var raw = null, headers = [], rows = [], out = null, fileName = "";
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  // ---------- קריאת הקובץ ----------
+
+  function decode(buf){
+    var bytes = new Uint8Array(buf);
+    // חיתוך BOM של UTF-8
+    if (bytes.length > 2 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF){
+      bytes = bytes.subarray(3);
+    }
+    var utf8 = new TextDecoder("utf-8").decode(bytes);
+    // U+FFFD = הבייטים אינם UTF-8 תקין. עברית מאקסל היא לרוב Windows-1255.
+    if (utf8.indexOf("�") === -1) return { text: utf8, enc: "UTF-8" };
+    try {
+      return { text: new TextDecoder("windows-1255").decode(bytes), enc: "Windows-1255" };
+    } catch(e){
+      return { text: utf8, enc: "UTF-8 (עם תווים פגומים)" };
+    }
+  }
+
+  function detectDelim(text){
+    var line = text.split(/\r?\n/, 1)[0] || "";
+    var best = ",", bestN = -1;
+    DELIMS.forEach(function(d){
+      var n = 0, q = false;
+      for (var i = 0; i < line.length; i++){
+        if (line[i] === '"') q = !q;
+        else if (!q && line[i] === d) n++;
+      }
+      if (n > bestN){ bestN = n; best = d; }
+    });
+    return best;
+  }
+
+  // מנתח CSV מלא: מרכאות, מרכאות כפולות בתוך שדה, ושורות חדשות בתוך שדה
+  function parseCSV(text, delim){
+    var res = [], row = [], field = "", inQ = false, i = 0;
+    while (i < text.length){
+      var c = text[i];
+      if (inQ){
+        if (c === '"'){
+          if (text[i+1] === '"'){ field += '"'; i += 2; continue; }
+          inQ = false; i++; continue;
+        }
+        field += c; i++; continue;
+      }
+      if (c === '"'){ inQ = true; i++; continue; }
+      if (c === delim){ row.push(field); field = ""; i++; continue; }
+      if (c === "\r"){ i++; continue; }
+      if (c === "\n"){ row.push(field); res.push(row); row = []; field = ""; i++; continue; }
+      field += c; i++;
+    }
+    if (field !== "" || row.length){ row.push(field); res.push(row); }
+    // השמטת שורות ריקות לגמרי
+    return res.filter(function(r){
+      return r.some(function(v){ return v !== "" && v != null; });
+    });
+  }
+
+  function loadFile(f){
+    fileName = f.name;
+    var fr = new FileReader();
+    fr.onload = function(){
+      var d = decode(fr.result);
+      var delim = detectDelim(d.text);
+      var table = parseCSV(d.text, delim);
+      if (!table.length){ $("fileInfo").textContent = "הקובץ ריק או לא נקרא."; return; }
+
+      headers = table[0].map(function(h, i){ return h.trim() || ("עמודה " + (i+1)); });
+      rows = table.slice(1);
+      raw = d;
+
+      var dName = delim === "\t" ? "טאב" : delim === ";" ? "נקודה־פסיק" : delim === "|" ? "קו אנכי" : "פסיק";
+      $("fileInfo").textContent =
+        f.name + " · " + rows.length.toLocaleString("he-IL") + " שורות × " +
+        headers.length + " עמודות · מפריד: " + dName + " · קידוד: " + d.enc;
+
+      var note = $("encNote");
+      if (d.enc === "Windows-1255"){
+        note.textContent = "הקובץ אינו UTF-8 ונקרא כ-Windows-1255. בדוק בתצוגה המקדימה שהעברית תקינה.";
+        note.classList.remove("hide");
+      } else { note.classList.add("hide"); }
+
+      buildCols();
+      $("setup").classList.remove("hide");
+      $("previewBox").classList.add("hide");
+      $("download").disabled = true;
+      $("outStats").textContent = "";
+      out = null;
+    };
+    fr.readAsArrayBuffer(f);
+  }
+
+  function buildCols(){
+    var box = $("idCols");
+    box.textContent = "";
+    headers.forEach(function(h, i){
+      var l = document.createElement("label");
+      l.className = "opt";
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = (i === 0); // ברירת מחדל: העמודה הראשונה היא המזהה
+      cb.dataset.i = i;
+      var s = document.createElement("span");
+      s.textContent = h;
+      s.title = h;
+      l.appendChild(cb); l.appendChild(s);
+      box.appendChild(l);
+    });
+  }
+
+  // ---------- ההמרה ----------
+
+  function convert(){
+    var idIdx = Array.prototype.slice
+      .call($("idCols").querySelectorAll("input:checked"))
+      .map(function(cb){ return +cb.dataset.i; });
+
+    var valIdx = headers.map(function(_, i){ return i; })
+      .filter(function(i){ return idIdx.indexOf(i) === -1; });
+
+    if (!valIdx.length){
+      $("outStats").textContent = "כל העמודות סומנו כמזהה — לא נשאר מה להמיר.";
+      return;
+    }
+
+    var skip = $("skipEmpty").checked;
+    var trim = $("trimVals").checked;
+    var nameCol = $("nameCol").value.trim() || "שם_עמודה";
+    var valColName = $("valCol").value.trim() || "ערך";
+
+    var head = idIdx.map(function(i){ return headers[i]; }).concat([nameCol, valColName]);
+    var res = [head];
+    var skipped = 0;
+
+    for (var r = 0; r < rows.length; r++){
+      var row = rows[r];
+      var ids = idIdx.map(function(i){
+        var v = row[i] == null ? "" : row[i];
+        return trim ? v.trim() : v;
+      });
+      for (var k = 0; k < valIdx.length; k++){
+        var ci = valIdx[k];
+        var v = row[ci] == null ? "" : row[ci];
+        if (trim) v = v.trim();
+        if (skip && v === ""){ skipped++; continue; }
+        res.push(ids.concat([headers[ci], v]));
+      }
+    }
+
+    out = res;
+    var dataRows = res.length - 1;
+    $("outStats").textContent =
+      rows.length.toLocaleString("he-IL") + "×" + headers.length + " → " +
+      dataRows.toLocaleString("he-IL") + " שורות" +
+      (skipped ? " · " + skipped.toLocaleString("he-IL") + " תאים ריקים דולגו" : "");
+    $("download").disabled = dataRows === 0;
+    renderPreview(res);
+  }
+
+  function renderPreview(res){
+    var t = $("preview");
+    t.textContent = "";
+    var n = Math.min(res.length, 21); // כותרת + 20
+    for (var i = 0; i < n; i++){
+      var tr = document.createElement("tr");
+      for (var j = 0; j < res[i].length; j++){
+        var cell = document.createElement(i === 0 ? "th" : "td");
+        cell.textContent = res[i][j];
+        cell.title = res[i][j];
+        tr.appendChild(cell);
+      }
+      t.appendChild(tr);
+    }
+    $("previewBox").classList.remove("hide");
+  }
+
+  // ---------- הורדה ----------
+
+  function csvCell(v){
+    v = String(v == null ? "" : v);
+    return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+
+  function download(){
+    if (!out) return;
+    var text = out.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
+    // BOM — בלי זה אקסל פותח עברית כג'יבריש
+    var blob = new Blob(["﻿" + text], {type:"text/csv;charset=utf-8"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName.replace(/\.[^.]+$/, "") + " — פורמט ארוך.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  // ---------- חיווט ----------
+
+  var drop = $("drop"), input = $("file");
+  drop.addEventListener("click", function(){ input.click(); });
+  input.addEventListener("change", function(){ if (input.files[0]) loadFile(input.files[0]); });
+
+  ["dragenter","dragover"].forEach(function(e){
+    drop.addEventListener(e, function(ev){ ev.preventDefault(); drop.classList.add("over"); });
+  });
+  ["dragleave","drop"].forEach(function(e){
+    drop.addEventListener(e, function(ev){ ev.preventDefault(); drop.classList.remove("over"); });
+  });
+  drop.addEventListener("drop", function(ev){
+    var f = ev.dataTransfer && ev.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  $("convert").addEventListener("click", convert);
+  $("download").addEventListener("click", download);
+
+  // נגיש לבדיקות
+  window.__t2l = { parseCSV: parseCSV, detectDelim: detectDelim, csvCell: csvCell };
+})();
+</script>
+</body>
+</html>
